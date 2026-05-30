@@ -810,8 +810,8 @@
       </div>
 
       <div class="bento-item item-2">
-        <span class="bento-tag">Lavanderia planejada</span>
-        <img src="Img/" alt="Living Terracota">
+        <span class="bento-tag">Sala de Estar</span>
+        <img src="Img/WhatsApp Image 2026-05-29 at 23.38.44 (1).jpeg" alt="Living Terracota">
         <div class="bento-overlay">
           <h3>Living Terracota</h3>
           <p>Painéis ripados com iluminação embutida · 45 dias</p>
@@ -1249,14 +1249,37 @@
 
 Sua personalidade: calorosa, confiante, criativa e profissional. Fale como uma designer experiente que ama o que faz. Use "eu" na primeira pessoa. Emojis com moderação.
 
-Seu objetivo nesta conversa é:
-1. Cumprimentar e perguntar o nome do cliente
-2. Descobrir qual ambiente deseja reformar (cozinha, quarto, sala, banheiro, home office, área gourmet, apartamento completo)
-3. Entender brevemente a necessidade (ex: mais organização, mais espaço, renovar estética)
-4. Perguntar se é imóvel próprio ou alugado e qual bairro/cidade na Grande SP
-5. Apresentar brevemente o processo (visita técnica gratuita → projeto 3D em 7 dias → entrega em até 45 dias)
-6. Convidar para agendar a visita técnica gratuita e coletar disponibilidade (dia e período: manhã/tarde)
-7. Encerrar confirmando que vai entrar em contato pelo WhatsApp para confirmar
+Seu objetivo é conduzir uma conversa fluida para qualificar o cliente e coletar todas as informações abaixo, UMA POR VEZ, de forma natural — nunca como um formulário:
+
+INFORMAÇÕES A COLETAR (nesta ordem):
+1. Nome do cliente
+2. Ambiente a reformar (cozinha, quarto, sala, banheiro, home office, área gourmet, apartamento completo)
+3. Necessidade principal (mais organização, mais espaço, renovar estética, outro)
+4. Imóvel próprio ou alugado
+5. Cidade
+6. Bairro
+7. Tipo de imóvel: Casa ou Apartamento
+8. Número e complemento (ex: apto 42, bloco B) — pergunte de forma natural como "qual o número e complemento para a visita?"
+9. Disponibilidade para visita técnica (dia da semana e período: manhã ou tarde)
+10. Número de WhatsApp para contato
+
+Após coletar TODAS as informações acima:
+- Agradeça calorosamente
+- Diga que vai agendar a visita técnica gratuita
+- Envie o resumo do lead em formato especial exatamente assim (para o sistema capturar):
+
+[LEAD_COMPLETO]
+Nome: {nome}
+Ambiente: {ambiente}
+Necessidade: {necessidade}
+Imóvel: {proprio_ou_alugado}
+Cidade: {cidade}
+Bairro: {bairro}
+Tipo: {casa_ou_apartamento}
+Número/Complemento: {numero_complemento}
+Disponibilidade: {disponibilidade}
+WhatsApp: {whatsapp}
+[/LEAD_COMPLETO]
 
 Informações sobre a Leidy Interiores:
 - Atende São Paulo e Grande SP (Guarulhos, Santo André, São Bernardo, Osasco, Barueri, Alphaville)
@@ -1269,11 +1292,11 @@ Informações sobre a Leidy Interiores:
 - Mais de 80 projetos entregues, avaliação 4.9
 
 Regras:
+- Nunca faça mais de uma pergunta por mensagem
 - Não invente preços ou prazos além dos informados
 - Se perguntarem algo que não sabe, diga que vai verificar e responde pelo WhatsApp
-- Conduza a conversa com fluidez, não faça todas as perguntas de uma vez
 - Mantenha respostas curtas (máx 3 frases por mensagem)
-- Ao final, sempre convide para o WhatsApp: https://wa.me/5511978427796`;
+- Seja calorosa e empática durante toda a conversa`;
 
     const fab = document.getElementById('chatFab');
     const panel = document.getElementById('chatPanel');
@@ -1360,7 +1383,15 @@ Regras:
         const reply = data.choices[0].message.content;
         removeTyping();
         history.push({ role: 'model', parts: [{ text: reply }] });
-        addMsg(reply, 'bot');
+
+        // Detect lead completion
+        if (reply.includes('[LEAD_COMPLETO]')) {
+          const clean = reply.replace(/\[LEAD_COMPLETO\][\s\S]*?\[\/LEAD_COMPLETO\]/g, '').trim();
+          addMsg(clean || 'Perfeito! Registrei todas as suas informações. Em breve entro em contato! 😊', 'bot');
+          dispararLead(reply);
+        } else {
+          addMsg(reply, 'bot');
+        }
 
         if (history.length === 2) {
           setQuickReplies(['Cozinha', 'Quarto', 'Sala', 'Apartamento completo']);
@@ -1373,6 +1404,45 @@ Regras:
         removeTyping();
         addMsg('Ops, tive um probleminha técnico. Me chama no WhatsApp! 😊', 'bot');
       }
+    }
+
+    function parseLead(text) {
+      const fields = ['Nome','Ambiente','Necessidade','Imóvel','Cidade','Bairro','Tipo','Número/Complemento','Disponibilidade','WhatsApp'];
+      const lead = {};
+      fields.forEach(f => {
+        const regex = new RegExp(f + ':\\s*(.+)', 'i');
+        const match = text.match(regex);
+        if (match) lead[f] = match[1].trim();
+      });
+      return lead;
+    }
+
+    function dispararLead(replyText) {
+      const lead = parseLead(replyText);
+      const msg = `🏠 *Novo Lead — Leidy Interiores*
+
+` +
+        `👤 Nome: ${lead['Nome'] || '-'}
+` +
+        `🛋️ Ambiente: ${lead['Ambiente'] || '-'}
+` +
+        `💬 Necessidade: ${lead['Necessidade'] || '-'}
+` +
+        `🏡 Imóvel: ${lead['Imóvel'] || '-'} — ${lead['Tipo'] || '-'}
+` +
+        `📍 Cidade: ${lead['Cidade'] || '-'}
+` +
+        `📍 Bairro: ${lead['Bairro'] || '-'}
+` +
+        `🔢 Nº/Complemento: ${lead['Número/Complemento'] || '-'}
+` +
+        `📅 Disponibilidade: ${lead['Disponibilidade'] || '-'}
+` +
+        `📱 WhatsApp: ${lead['WhatsApp'] || '-'}`;
+
+      // Open WhatsApp with lead summary
+      const wppUrl = 'https://wa.me/5511978427796?text=' + encodeURIComponent(msg);
+      window.open(wppUrl, '_blank');
     }
 
     function sendMessage(text) {
